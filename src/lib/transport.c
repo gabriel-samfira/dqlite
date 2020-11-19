@@ -46,7 +46,7 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 
 		/* Advance the read window */
 		t->read.base += n;
-		t->read.len -= n;
+		t->read.len -= (ULONG)n;
 
 		/* If there's more data to read in order to fill the current
 		 * read buffer, just return, we'll be invoked again. */
@@ -73,14 +73,22 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
 }
 
 int transport__stream(struct uv_loop_s *loop,
-		      int fd,
+		      size_t fd,
 		      struct uv_stream_s **stream)
 {
 	struct uv_pipe_s *pipe;
 	struct uv_tcp_s *tcp;
 	int rv;
-
-	switch (uv_guess_handle(fd)) {
+    uv_handle_type hType;
+    hType = uv_guess_handle((int)fd);
+#if defined(_WIN32)
+    if (hType == UV_UNKNOWN_HANDLE) {
+        // On windows, uv_guess_handle only works for files, named pipes
+        // and disks. TCP sockets are not files on Windows.
+        hType = UV_TCP;
+    }
+#endif
+	switch (hType) {
 		case UV_TCP:
 			tcp = raft_malloc(sizeof *tcp);
 			if (tcp == NULL) {
@@ -101,7 +109,7 @@ int transport__stream(struct uv_loop_s *loop,
 			}
 			rv = uv_pipe_init(loop, pipe, 0);
 			assert(rv == 0);
-			rv = uv_pipe_open(pipe, fd);
+			rv = uv_pipe_open(pipe, (int)fd);
 			if (rv != 0) {
 				return TRANSPORT__BADSOCKET;
 			}

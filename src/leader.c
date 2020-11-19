@@ -252,7 +252,6 @@ static void leaderApplyFramesCb(struct raft_apply *req,
 	}
 
 	(void)result;
-
 	if (status != 0) {
 		sqlite3_vfs *vfs = sqlite3_vfs_find(l->db->config->name);
 		switch (status) {
@@ -359,7 +358,6 @@ static void leaderExecV2(struct exec *req)
 	unsigned n;
 	unsigned i;
 	int rv;
-
 	req->status = sqlite3_step(req->stmt);
 
 	rv = VfsPoll(vfs, l->db->filename, &frames, &n);

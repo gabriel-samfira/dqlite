@@ -107,7 +107,7 @@ static void connect_work_cb(uv_work_t *work)
 	message__encode(&message, &cursor);
 	request_connect__encode(&request, &cursor);
 
-	rv = (int)write(r->fd, buf, n);
+	rv = (int)write(r->fd, buf, (ULONG)n);
 	sqlite3_free(buf);
 
 	if (rv != (int)n) {
@@ -229,12 +229,12 @@ static int default_connect(void *arg, const char *address, int *fd)
 		return RAFT_NOCONNECTION;
 	}
 
-	*fd = socket(AF_INET, SOCK_STREAM, 0);
+	*fd = (int)socket(AF_INET, SOCK_STREAM, 0);
 	if (*fd == -1) {
 		return RAFT_NOCONNECTION;
 	}
 
-	rv = connect(*fd, (const struct sockaddr *)&addr, sizeof addr);
+	rv = connect((ULONG)*fd, (const struct sockaddr *)&addr, sizeof addr);
 	if (rv == -1) {
 		close(*fd);
 		return RAFT_NOCONNECTION;

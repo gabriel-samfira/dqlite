@@ -314,7 +314,7 @@ DQLITE_INLINE int blob__decode(struct cursor *cursor, blob_t *value)
 		return DQLITE_PARSE;
 	}
 	value->base = (char *)cursor->p;
-	value->len = len;
+	value->len = (ULONG)len;
 	cursor->p += n;
 	cursor->cap -= n;
 	return 0;

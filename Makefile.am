@@ -6,7 +6,7 @@ AM_LDFLAGS = $(SQLITE_LIBS) $(UV_LIBS) $(RAFT_LIBS) $(PTHREAD_LIBS)
 include_HEADERS = include/dqlite.h
 
 lib_LTLIBRARIES = libdqlite.la
-libdqlite_la_LDFLAGS = $(AM_LDFLAGS) -version-info 0:1:0
+libdqlite_la_LDFLAGS = $(AM_LDFLAGS) -version-info 0:1:0 -no-undefined
 libdqlite_la_SOURCES = \
   src/bind.c \
   src/client.c \

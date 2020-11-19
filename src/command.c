@@ -156,7 +156,11 @@ int command_frames__page_numbers(const struct command_frames *c,
 		if (r != 0) {
 			return r;
 		}
+#if defined(_WIN32)
+		(*page_numbers)[i] = (ULONG)pgno;
+#else
 		(*page_numbers)[i] = pgno;
+#endif
 	}
 
 	return 0;

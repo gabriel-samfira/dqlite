@@ -460,13 +460,11 @@ static void handle_exec_sql_next(struct handle *req, struct cursor *cursor)
 
 	g->sql = tail;
 	g->req = req;
-
 	rv = leader__exec(g->leader, &g->exec, g->stmt, handle_exec_sql_cb);
 	if (rv != SQLITE_OK) {
 		failure(req, rv, sqlite3_errmsg(g->leader->conn));
 		goto done_after_prepare;
 	}
-
 	return;
 
 success:
@@ -969,7 +967,6 @@ int gateway__handle(struct gateway *g,
 		    handle_cb cb)
 {
 	int rc = 0;
-
 	/* Check if there is a request in progress. */
 	if (g->req != NULL && type != DQLITE_REQUEST_HEARTBEAT) {
 		if (g->req->type == DQLITE_REQUEST_QUERY ||
@@ -984,13 +981,11 @@ int gateway__handle(struct gateway *g,
 		}
 		assert(0);
 	}
-
 handle:
 	req->type = type;
 	req->gateway = g;
 	req->cb = cb;
 	req->buffer = buffer;
-
 	switch (type) {
 #define DISPATCH(LOWER, UPPER, _)                 \
 	case DQLITE_REQUEST_##UPPER:              \
@@ -998,7 +993,6 @@ handle:
 		break;
 		REQUEST__TYPES(DISPATCH);
 	}
-
 	return rc;
 }
 

@@ -12,7 +12,7 @@ static int init_read(struct conn *c, uv_buf_t *buf, size_t size)
 	if (buf->base == NULL) {
 		return DQLITE_NOMEM;
 	}
-	buf->len = size;
+	buf->len = (ULONG)size;
 	return 0;
 }
 
@@ -54,7 +54,6 @@ static void gateway_handle_cb(struct handle *req, int status, int type)
 	void *cursor;
 	uv_buf_t buf;
 	int rv;
-
 	/* Ignore results firing after we started closing. TODO: instead, we
 	 * should make gateway__close() asynchronous. */
 	if (c->closed) {
@@ -77,7 +76,7 @@ static void gateway_handle_cb(struct handle *req, int status, int type)
 	message__encode(&c->response, &cursor);
 
 	buf.base = buffer__cursor(&c->write, 0);
-	buf.len = buffer__offset(&c->write);
+	buf.len = (ULONG)buffer__offset(&c->write);
 
 	rv = transport__write(&c->transport, &buf, write_cb);
 	if (rv != 0) {
@@ -120,7 +119,6 @@ static void read_request_cb(struct transport *transport, int status)
 	struct conn *c = transport->data;
 	struct cursor cursor;
 	int rv;
-
 	if (status != 0) {
 		// errorf(c->logger, "read error");
 		conn__stop(c);
@@ -138,7 +136,6 @@ static void read_request_cb(struct transport *transport, int status)
 			raft_connect(c, &cursor);
 			return;
 	}
-
 	rv = gateway__handle(&c->gateway, &c->handle, c->request.type, &cursor,
 			     &c->write, gateway_handle_cb);
 	if (rv != 0) {

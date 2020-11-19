@@ -55,6 +55,7 @@ int clientSendHandshake(struct client *c)
 	return 0;
 }
 
+#if defined(__linux__)
 /* Write out a request. */
 #define REQUEST(LOWER, UPPER)                                       \
 	{                                                           \
@@ -82,7 +83,36 @@ int clientSendHandshake(struct client *c)
 			return DQLITE_ERROR;                        \
 		}                                                   \
 	}
+#else
+#define REQUEST(LOWER, UPPER)                                       \
+    {                                                           \
+        struct message message;                             \
+        ULONG n;                                           \
+        ULONG n1;                                          \
+        ULONG n2;                                          \
+        void *cursor;                                       \
+        ssize_t rv;                                         \
+        n1 = (ULONG)message__sizeof(&message);                     \
+        n2 = (ULONG)request_##LOWER##__sizeof(&request);           \
+        n = n1 + n2;                                        \
+        buffer__reset(&c->write);                           \
+        cursor = buffer__advance(&c->write, n);             \
+        if (cursor == NULL) {                               \
+            return DQLITE_NOMEM;                        \
+        }                                                   \
+        assert(n2 % 8 == 0);                                \
+        message.type = DQLITE_REQUEST_##UPPER;              \
+        message.words = (uint32_t)(n2 / 8);                 \
+        message__encode(&message, &cursor);                 \
+        request_##LOWER##__encode(&request, &cursor);       \
+        rv = write(c->fd, buffer__cursor(&c->write, 0), n); \
+        if (rv != (int)n) {                                 \
+            return DQLITE_ERROR;                        \
+        }                                                   \
+    }
+#endif
 
+#if defined(__linux__)
 /* Read a response without decoding it. */
 #define READ(LOWER, UPPER)                                      \
 	{                                                       \
@@ -117,6 +147,41 @@ int clientSendHandshake(struct client *c)
 			return DQLITE_ERROR;                    \
 		}                                               \
 	}
+#else
+#define READ(LOWER, UPPER)                                      \
+    {                                                       \
+        struct message _message;                        \
+        struct cursor _cursor;                          \
+        ULONG _n;                                      \
+        void *_p;                                       \
+        ssize_t _rv;                                    \
+        _n = (ULONG)message__sizeof(&_message);                \
+        buffer__reset(&c->read);                        \
+        _p = buffer__advance(&c->read, _n);             \
+        assert(_p != NULL);                             \
+        _rv = read(c->fd, _p, _n);                      \
+        if (_rv != (int)_n) {                           \
+            return DQLITE_ERROR;                    \
+        }                                               \
+        _cursor.p = _p;                                 \
+        _cursor.cap = _n;                               \
+        _rv = message__decode(&_cursor, &_message);     \
+        assert(_rv == 0);                               \
+        if (_message.type != DQLITE_RESPONSE_##UPPER) { \
+            return DQLITE_ERROR;                    \
+        }                                               \
+        buffer__reset(&c->read);                        \
+        _n = _message.words * 8;                        \
+        _p = buffer__advance(&c->read, _n);             \
+        if (_p == NULL) {                               \
+            return DQLITE_ERROR;                    \
+        }                                               \
+        _rv = read(c->fd, _p, _n);                      \
+        if (_rv != (int)_n) {                           \
+            return DQLITE_ERROR;                    \
+        }                                               \
+    }
+#endif
 
 /* Decode a response. */
 #define DECODE(LOWER)                                                \

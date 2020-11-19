@@ -83,6 +83,14 @@ CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
   -Wnested-externs \
   -Wconversion \
 ])
+
+case $host in
+  *mingw*)
+  CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[-D_POSIX])
+  ;;
+esac
+
+
 # To enable:
 #
 #  -Wpedantic \

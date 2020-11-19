@@ -1,11 +1,13 @@
 #include <raft.h>
 #include <raft/uv.h>
 #include <sqlite3.h>
+#include "pthread.h"
 
 #include "config.h"
 #include "lib/assert.h"
 #include "logger.h"
 #include "registry.h"
+#include "semaphore.h"
 
 /**
  * A single dqlite server instance.

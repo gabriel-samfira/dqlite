@@ -5,6 +5,9 @@
 #include "buffer.h"
 
 #include "../../include/dqlite.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 /* How large is the buffer currently */
 #define SIZE(B) (B->n_pages * B->page_size)
@@ -14,7 +17,13 @@
 
 int buffer__init(struct buffer *b)
 {
-	b->page_size = (unsigned)sysconf(_SC_PAGESIZE);
+	#ifdef _WIN32
+		SYSTEM_INFO system_info;
+		GetSystemInfo(&system_info);
+		b->page_size = (unsigned)system_info.dwPageSize;
+	#else
+		b->page_size = (unsigned)sysconf(_SC_PAGESIZE);
+	#endif
 	b->n_pages = 1;
 	b->data = malloc(SIZE(b));
 	if (b->data == NULL) {

@@ -1,8 +1,11 @@
 #include "server.h"
 
 #include <stdlib.h>
+#ifdef __linux__
 #include <sys/un.h>
+#endif
 #include <time.h>
+#include <raft/uv.h>
 
 #include "../include/dqlite.h"
 #include "conn.h"
@@ -178,11 +181,13 @@ static int ipParse(const char *address, struct sockaddr_in *addr)
 
 int dqlite_node_set_bind_address(dqlite_node *t, const char *address)
 {
+	#if !defined(_WIN32)
 	struct sockaddr_un addr_un;
+	#endif
 	struct sockaddr_in addr_in;
 	struct sockaddr *addr;
 	size_t len;
-	int fd;
+	size_t fd;
 	int rv;
 	int domain = address[0] == '@' ? AF_UNIX : AF_INET;
 	if (t->running) {
@@ -196,6 +201,7 @@ int dqlite_node_set_bind_address(dqlite_node *t, const char *address)
 		}
 		len = sizeof addr_in;
 		addr = (struct sockaddr *)&addr_in;
+	#if !defined(_WIN32)
 	} else {
 		memset(&addr_un, 0, sizeof addr_un);
 		addr_un.sun_family = AF_UNIX;
@@ -208,30 +214,48 @@ int dqlite_node_set_bind_address(dqlite_node *t, const char *address)
 		}
 		len += sizeof(sa_family_t);
 		addr = (struct sockaddr *)&addr_un;
+	#endif
 	}
+	#if defined(_WIN32)
+	fd = socket(domain, SOCK_STREAM, 0);
+	#else
 	fd = socket(domain, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (fd == -1) {
+	#endif
+
+	if (fd == (size_t)-1) {
 		return DQLITE_ERROR;
 	}
 	if (domain == AF_INET) {
 		int reuse = 1;
-		rv = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
+		rv = setsockopt((ULONG)fd, SOL_SOCKET, SO_REUSEADDR,
 				(const char *)&reuse, sizeof(reuse));
 		if (rv != 0) {
+#if defined(_WIN32)
+            closesocket(fd);
+#else
 			close(fd);
+#endif
 			return DQLITE_ERROR;
 		}
 	}
 
 	rv = bind(fd, addr, (socklen_t)len);
 	if (rv != 0) {
+#if defined(_WIN32)
+        closesocket(fd);
+#else
 		close(fd);
+#endif
 		return DQLITE_ERROR;
 	}
 
 	rv = transport__stream(&t->loop, fd, &t->listener);
 	if (rv != 0) {
+#if defined(_WIN32)
+        closesocket(fd);
+#else
 		close(fd);
+#endif
 		return DQLITE_ERROR;
 	}
 
@@ -242,6 +266,7 @@ int dqlite_node_set_bind_address(dqlite_node *t, const char *address)
 			return DQLITE_NOMEM;
 		}
 		strcpy(t->bind_address, address);
+	#if !defined(_WIN32)
 	} else {
 		len = sizeof addr_un.sun_path;
 		t->bind_address = sqlite3_malloc((int)len);
@@ -257,6 +282,7 @@ int dqlite_node_set_bind_address(dqlite_node *t, const char *address)
 			return DQLITE_ERROR;
 		}
 		t->bind_address[0] = '@';
+	#endif
 	}
 
 	return 0;
@@ -324,7 +350,7 @@ static int maybeBootstrap(dqlite_node *d,
 		if (rv == RAFT_CANTBOOTSTRAP) {
 			rv = 0;
 		} else {
-			rv = DQLITE_ERROR;
+		    rv = DQLITE_ERROR;
 		}
 		goto out;
 	}
@@ -425,6 +451,7 @@ static void listenCb(uv_stream_t *listener, int status)
 		goto err;
 	}
 
+	#if !defined(_WIN32)
 	/* We accept unix socket connections only from the same process. */
 	if (listener->type == UV_NAMED_PIPE) {
 		struct ucred cred;
@@ -440,6 +467,7 @@ static void listenCb(uv_stream_t *listener, int status)
 			goto err;
 		}
 	}
+	#endif
 
 	conn = sqlite3_malloc(sizeof *conn);
 	if (conn == NULL) {
